@@ -38,6 +38,10 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
 ]
 
+# 重试配置
+MAX_RETRIES = 3          # 最大重试轮数（每轮会遍历所有域名）
+RETRY_INTERVAL = 30      # 每轮重试间隔（秒）
+
 # ========================= 日志配置 =========================
 
 logging.basicConfig(
@@ -95,16 +99,27 @@ def get_user_status(domain: str) -> dict:
 
 
 def try_checkin() -> dict:
-    """尝试所有域名进行签到"""
-    for domain in DOMAINS:
-        logger.info(f"尝试签到域名: {domain}")
-        result = checkin(domain)
-        if result["success"]:
-            return result
-        # 失败后短暂等待再试下一个域名
-        time.sleep(2)
+    """尝试所有域名进行签到，失败时自动多轮重试"""
+    last_error = "所有域名均签到失败"
 
-    return {"success": False, "error": "所有域名均签到失败"}
+    for attempt in range(1, MAX_RETRIES + 1):
+        if attempt > 1:
+            logger.info(f"第 {attempt}/{MAX_RETRIES} 轮重试，等待 {RETRY_INTERVAL} 秒...")
+            time.sleep(RETRY_INTERVAL)
+
+        for domain in DOMAINS:
+            logger.info(f"尝试签到域名: {domain} (第 {attempt} 轮)")
+            result = checkin(domain)
+            if result["success"]:
+                if attempt > 1:
+                    logger.info(f"第 {attempt} 轮重试签到成功!")
+                return result
+            last_error = result.get("error", "未知错误")
+            # 同一轮内切换域名前短暂等待
+            time.sleep(2)
+
+    logger.error(f"经过 {MAX_RETRIES} 轮尝试后仍然签到失败")
+    return {"success": False, "error": f"{last_error} (已重试{MAX_RETRIES}轮)"}
 
 
 def try_get_status(domain: str = None) -> dict:
@@ -151,9 +166,19 @@ def format_message(checkin_result: dict, status_result: dict) -> str:
             left = info.get("leftDays", info.get("left_days", "未知"))
             plan = info.get("plan", info.get("planName", "未知"))
             lines.append(f"套餐: {plan}")
-            lines.append(f"剩余天数: {left}")
+            lines.append(f"剩余天数: {format_days(left)}")
 
     return "\n".join(lines)
+
+
+def format_days(value) -> str:
+    """格式化剩余天数，保留最多两位小数，去掉无意义的零"""
+    try:
+        num = float(value)
+        formatted = f"{num:.2f}".rstrip("0").rstrip(".")
+        return formatted if formatted else "0"
+    except (ValueError, TypeError):
+        return str(value)
 
 
 def build_title(checkin_result: dict, status_result: dict) -> str:
@@ -183,7 +208,7 @@ def build_title(checkin_result: dict, status_result: dict) -> str:
         if isinstance(info, dict):
             left = info.get("leftDays", info.get("left_days"))
             if left is not None:
-                title += f" (剩余{left}天)"
+                title += f" (剩余{format_days(left)}天)"
 
     return title
 
