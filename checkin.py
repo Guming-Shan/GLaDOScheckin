@@ -156,6 +156,38 @@ def format_message(checkin_result: dict, status_result: dict) -> str:
     return "\n".join(lines)
 
 
+def build_title(checkin_result: dict, status_result: dict) -> str:
+    """根据签到结果和账户状态动态生成通知标题"""
+    if not checkin_result["success"]:
+        return f"GLaDOS 签到失败 - {checkin_result.get('error', '未知错误')[:40]}"
+
+    # 解析 API 返回的 message
+    data = checkin_result["data"]
+    msg = data.get("message", data.get("msg", ""))
+    code = data.get("code", -1)
+
+    # 判断签到状态并生成对应标题
+    if "already" in msg.lower() or "tomorrow" in msg.lower() or "logged" in msg.lower():
+        # 今天已经签到过了
+        title = "GLaDOS 今日已签到"
+    elif "Checkin" in msg or code == 0:
+        # 新签到成功
+        title = "GLaDOS 签到成功"
+    else:
+        title = f"GLaDOS 签到 - {msg[:30]}" if msg else "GLaDOS 签到完成"
+
+    # 追加剩余天数信息
+    if status_result.get("success"):
+        sdata = status_result["data"]
+        info = sdata.get("data", sdata) if isinstance(sdata, dict) else sdata
+        if isinstance(info, dict):
+            left = info.get("leftDays", info.get("left_days"))
+            if left is not None:
+                title += f" (剩余{left}天)"
+
+    return title
+
+
 def push_plus_notify(title: str, content: str):
     """通过 PushPlus 发送微信通知"""
     if not PUSHPLUS_TOKEN:
@@ -229,7 +261,7 @@ def main():
     logger.info("-" * 40)
 
     # 推送通知
-    title = "GLaDOS 签到成功" if checkin_result["success"] else "GLaDOS 签到失败"
+    title = build_title(checkin_result, status_result)
     push_plus_notify(title, message)
 
     logger.info("GLaDOS 自动签到完成")
