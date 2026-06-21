@@ -1,132 +1,123 @@
-# GLaDOS 自动签到
+# GLaDOS Auto CheckIn
 
-每日自动完成 GLaDOS 签到，支持 GitHub Actions 云端定时运行 + 本地 Python 脚本两种模式，可选 PushPlus 微信推送通知。
+> 基于 Python + GitHub Actions 的 GLaDOS 每日自动签到工具，支持微信通知推送。
 
----
+## 功能特性
 
-## Cookie 获取教程
+- 每日自动签到，支持 GitHub Actions 云端定时与本地运行两种模式
+- 多域名自动容错（glados.rocks / cloud / one / space），任一站点不可用时自动切换
+- 签到失败自动重试（最多 3 轮，每轮遍历所有域名）
+- 可选 PushPlus 微信推送，签到结果直达手机
+- 智能通知标题：区分"签到成功 / 今日已签到 / 签到失败"，并显示剩余天数
 
-Cookie 是签到的唯一身份凭证，请按以下步骤获取：
+## 快速开始
 
-1. 用浏览器打开 https://glados.cloud/console/checkin 并**确保已登录**
-2. 按 **F12** 打开开发者工具（Edge/Chrome 通用）
-3. 点击顶部的 **Network（网络）** 标签
-4. 点击页面上的【**签到**】按钮
-5. 在 Network 列表中找到名为 `checkin` 的请求，点击它
-6. 在右侧 **Headers（标头）** 面板中找到 **Request Headers** 区域
-7. 找到 `cookie` 字段，右键复制其**完整内容**
+### 1. 获取 Cookie
+
+Cookie 是签到的唯一身份凭证。
+
+1. 用浏览器打开 https://glados.cloud/console/checkin 并确保已登录
+2. 按 `F12` 打开开发者工具（Edge / Chrome 通用）
+3. 切换到 **Network** 标签
+4. 点击页面上的【签到】按钮
+5. 在 Network 列表中找到 `checkin` 请求并点击
+6. 在 **Request Headers** 中找到 `cookie` 字段，复制完整内容
 
 示例格式：`_ga=GA1.2.xxx; _gid=GI1.2.xxx; koa:sess=xxx; koa:sess.sig=xxx`
 
-> 注意：Cookie 有效期有限（通常数周至数月），过期后需重新获取并更新。
+> Cookie 有效期通常为数周至数月，过期后需重新获取并更新。
 
----
+### 2. 部署方式
 
-## 方式一：GitHub Actions（推荐，无需本地运行）
+**方式一：GitHub Actions（推荐）**
 
-### 第一步：创建仓库
+Fork 本仓库到你的 GitHub 账号（点击右上角 Fork 按钮），然后进入 **你自己的仓库** 页面，找到 **Settings → Secrets and variables → Actions**，点击 **New repository secret** 添加：
 
-将本项目推送到你的 GitHub 仓库：
+| Secret 名称 | 必填 | 说明 |
+|---|---|---|
+| `GLADOS_COOKIES` | 是 | 上一步获取的 Cookie 完整内容 |
+| `PUSHPLUS_TOKEN` | 否 | PushPlus 推送 Token（见下方配置说明） |
 
-```bash
-cd D:\LEARN\github\gladosCHECKIN
-git init
-git add .
-git commit -m "Initial commit: GLaDOS auto checkin"
-git remote add origin https://github.com/你的用户名/gladosCHECKIN.git
-git push -u origin main
-```
+配置完成后，Workflow 会在每天 **北京时间 08:30** 自动执行。你也可以在 Actions 页面点击 **Run workflow** 手动触发。
 
-### 第二步：配置 Secrets
+首次部署后推送任意 commit 即可触发第一次运行。
 
-进入 GitHub 仓库页面 → **Settings** → **Secrets and variables** → **Actions** → 点击 **New repository secret**
+> GitHub Actions 在仓库 60 天无活动后会自动暂停，届时手动 Run workflow 一次即可恢复。
 
-添加以下 Secrets：
-
-| Secret 名称 | 说明 |
-|---|---|
-| `GLADOS_COOKIES` | 按上面教程获取的 Cookie 完整内容 |
-| `PUSHPLUS_TOKEN` | （可选）在 https://www.pushplus.plus/ 注册后获取的 Token |
-
-### 第三步：触发运行
-
-- **自动运行**：每天北京时间 08:30 自动执行（已在 workflow 中配置）
-- **手动运行**：仓库页面 → Actions → 选择 "GLaDOS Auto CheckIn" → 点击 **Run workflow**
-- **首次触发**：推送任意代码即可触发第一次运行
-
-> 注意：GitHub Actions 如果仓库 60 天无活动会自动暂停，届时需手动触发一次。
-
----
-
-## 方式二：本地 Python 脚本
-
-### 安装依赖
+**方式二：本地运行**
 
 ```bash
+# 安装依赖
 pip install -r requirements.txt
-```
 
-### 设置环境变量
+# 设置环境变量并运行
+# Linux / macOS
+export GLADOS_COOKIES="你的cookie"
+export PUSHPLUS_TOKEN="你的token"  # 可选
+python checkin.py
 
-**Windows PowerShell（临时，当前窗口有效）：**
-
-```powershell
-$env:GLADOS_COOKIES = "你的cookie内容"
-$env:PUSHPLUS_TOKEN = "你的pushplus_token"  # 可选
+# Windows PowerShell
+$env:GLADOS_COOKIES = "你的cookie"
+$env:PUSHPLUS_TOKEN = "你的token"  # 可选
 python checkin.py
 ```
 
-**Windows 系统环境变量（永久）：**
+如需本地定时运行，可配置 Windows 任务计划程序或 Linux crontab，指向 `checkin.py` 即可。
 
-1. 右键"此电脑" → 属性 → 高级系统设置 → 环境变量
-2. 新建用户变量，变量名 `GLADOS_COOKIES`，值为你的 Cookie
-3. 再新建 `PUSHPLUS_TOKEN`（可选）
-4. 重启终端后运行 `python checkin.py`
+### 3. 微信通知（可选）
 
-### 配置 Windows 任务计划程序（本地自动运行）
+1. 访问 https://www.pushplus.plus/ ，微信扫码登录
+2. 在个人中心复制你的 Token
+3. 配置到 GitHub Secret `PUSHPLUS_TOKEN` 或本地同名环境变量中
 
-1. 搜索打开"任务计划程序"
-2. 点击"创建基本任务"
-3. 名称填 `GLaDOS签到`，下一步
-4. 触发器选择"每天"，设置时间（如 08:30），下一步
-5. 操作选择"启动程序"，下一步
-6. 程序/脚本填 `python`（或 python.exe 完整路径）
-7. 添加参数填 `checkin.py`
-8. 起始于填 `D:\LEARN\github\gladosCHECKIN`
-9. 完成
+签到完成后，结果会自动通过 PushPlus 公众号推送到微信。
 
----
+## 配置参数
 
-## PushPlus 微信通知（可选）
+脚本顶部的以下常量可按需调整：
 
-1. 访问 https://www.pushplus.plus/ 用微信扫码登录
-2. 进入个人中心，复制你的 **Token**
-3. 将 Token 配置到 GitHub Secret `PUSHPLUS_TOKEN` 或本地环境变量中
-4. 签到完成后会自动推送结果到微信
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `DOMAINS` | 4 个域名 | API 域名列表，按优先级排列 |
+| `MAX_RETRIES` | 3 | 签到失败时最大重试轮数 |
+| `RETRY_INTERVAL` | 30 | 每轮重试间隔（秒） |
 
----
+## 环境变量
 
-## 项目文件结构
+| 变量名 | 必填 | 说明 |
+|---|---|---|
+| `GLADOS_COOKIES` | 是 | GLaDOS 登录 Cookie |
+| `PUSHPLUS_TOKEN` | 否 | PushPlus 推送 Token |
+
+## 项目结构
 
 ```
-gladosCHECKIN/
-├── checkin.py                      # 签到主脚本
-├── requirements.txt                # Python 依赖
-├── README.md                       # 本说明文档
+├── checkin.py                    # 签到脚本
+├── requirements.txt              # Python 依赖
+├── README.md                     # 本文档
 └── .github/
     └── workflows/
-        └── checkin.yml             # GitHub Actions 配置
+        └── checkin.yml           # GitHub Actions 定时任务
 ```
-
----
 
 ## 常见问题
 
-**Q: 签到失败提示 cookie 无效？**
-A: Cookie 已过期，请按教程重新获取并更新 Secret 或环境变量。
+**签到失败提示 Cookie 无效？**
+Cookie 已过期，请重新获取并更新 Secret 或环境变量。
 
-**Q: GitHub Actions 60 天后停止了？**
-A: 进入仓库 Actions 页面，手动点击 Run workflow 即可恢复。
+**GitHub Actions 超过 60 天停止运行？**
+进入仓库 Actions 页面，手动 Run workflow 一次即可恢复自动调度。
 
-**Q: 推送通知没收到？**
-A: 检查 PushPlus Token 是否正确配置，登录 pushplus.plus 确认服务状态。
+**微信没有收到通知？**
+确认 PushPlus Token 配置正确，并已关注 PushPlus 公众号。
+
+---
+
+## 免责声明
+
+1. 本项目仅供学习交流使用，使用者应自行遵守 GLaDOS 的服务条款及相关使用规定。
+2. 本项目与 GLaDOS 官方无任何关联，不是官方提供的工具。
+3. 使用本项目产生的一切后果（包括但不限于账号封禁、数据丢失、服务中断等）由使用者自行承担，作者不承担任何责任。
+4. GLaDOS 的 API 接口、域名及服务策略可能随时变更，本项目不保证长期可用性，亦不提供任何形式的担保。
+5. Cookie 属于敏感凭证，请妥善保管，切勿泄露。因 Cookie 泄露导致的损失与本项目无关。
+6. 请在遵守当地法律法规的前提下使用本项目。
