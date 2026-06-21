@@ -11,7 +11,7 @@ on:
   # 推送时触发（首次部署用）
   push:
     branches:
-      - main
+      - master
 
 jobs:
   checkin:
