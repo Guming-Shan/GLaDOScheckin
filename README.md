@@ -36,6 +36,7 @@ Fork 本仓库到你的 GitHub 账号（点击右上角 Fork 按钮），然后�
 | Secret 名称 | 必填 | 说明 |
 |---|---|---|
 | `GLADOS_COOKIES` | 是 | 上一步获取的 Cookie 完整内容 |
+| `GLADOS_USER_AGENT` | 是 | 获取 Cookie 时所用浏览器的完整 User-Agent；可在浏览器控制台执行 `navigator.userAgent` 获取 |
 | `PUSHPLUS_TOKEN` | 否 | PushPlus 推送 Token（见下方配置说明） |
 
 配置完成后，Workflow 会在每天 **北京时间 08:30** 自动执行。你也可以在 Actions 页面点击 **Run workflow** 手动触发。
@@ -53,11 +54,13 @@ pip install -r requirements.txt
 # 设置环境变量并运行
 # Linux / macOS
 export GLADOS_COOKIES="你的cookie"
+export GLADOS_USER_AGENT="获取 Cookie 时浏览器的 User-Agent"
 export PUSHPLUS_TOKEN="你的token"  # 可选
 python checkin.py
 
 # Windows PowerShell
 $env:GLADOS_COOKIES = "你的cookie"
+$env:GLADOS_USER_AGENT = "获取 Cookie 时浏览器的 User-Agent"
 $env:PUSHPLUS_TOKEN = "你的token"  # 可选
 python checkin.py
 ```
@@ -89,6 +92,7 @@ python checkin.py
 | 变量名 | 必填 | 说明 |
 |---|---|---|
 | `GLADOS_COOKIES` | 是 | GLaDOS 登录 Cookie |
+| `GLADOS_USER_AGENT` | 是 | 获取 Cookie 时所用浏览器的完整 User-Agent |
 | `PUSHPLUS_TOKEN` | 否 | PushPlus 推送 Token |
 
 ## 项目结构

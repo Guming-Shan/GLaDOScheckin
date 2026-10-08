@@ -23,19 +23,16 @@ COOKIES = os.environ.get("GLADOS_COOKIES", "")
 # 在 https://www.pushplus.plus/ 注册获取 token
 PUSHPLUS_TOKEN = os.environ.get("PUSHPLUS_TOKEN", "")
 
+# 登录 GLaDOS 时浏览器使用的 User-Agent
+# 应与获取 GLADOS_COOKIES 时使用的浏览器保持一致
+GLADOS_USER_AGENT = os.environ.get("GLADOS_USER_AGENT", "").strip()
+
 # GLaDOS API 域名列表（按优先级排列，若第一个失败会自动尝试下一个）
 DOMAINS = [
     "https://glados.rocks",
     "https://glados.cloud",
     "https://glados.one",
     "https://glados.space",
-]
-
-# 请求头
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
 ]
 
 # 重试配置
@@ -60,7 +57,7 @@ def get_headers(domain: str) -> dict:
         "cookie": COOKIES,
         "referer": f"{domain}/console/checkin",
         "origin": domain,
-        "user-agent": random.choice(USER_AGENTS),
+        "user-agent": GLADOS_USER_AGENT,
         "content-type": "application/json;charset=UTF-8",
         "accept": "application/json, text/plain, */*",
         "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
@@ -259,6 +256,16 @@ def main():
             "5. 在 Network 中找到 checkin 请求\n"
             "6. 点击该请求，查看 Request Headers\n"
             "7. 复制 Cookie 字段的完整内容"
+        )
+        logger.error(error_msg)
+        push_plus_notify("GLaDOS 签到失败", error_msg)
+        return
+
+    if not GLADOS_USER_AGENT:
+        error_msg = (
+            "未配置 GLADOS_USER_AGENT 环境变量！\n"
+            "请填写获取 GLADOS_COOKIES 时所用浏览器的完整 User-Agent。\n"
+            "可在浏览器开发者工具 Console 中执行 navigator.userAgent 获取。"
         )
         logger.error(error_msg)
         push_plus_notify("GLaDOS 签到失败", error_msg)

@@ -34,5 +34,6 @@ jobs:
       - name: Run CheckIn
         env:
           GLADOS_COOKIES: ${{ secrets.GLADOS_COOKIES }}
+          GLADOS_USER_AGENT: ${{ secrets.GLADOS_USER_AGENT }}
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
         run: python checkin.py
